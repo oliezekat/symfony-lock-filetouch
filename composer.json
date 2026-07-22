@@ -1,7 +1,7 @@
 {
     "name": "oliezekat/symfony-lock-filetouch",
     "type": "library",
-    "description": "Files touch() storage implementation for the Symfony Lock component",
+    "description": "Files touch() storage implementation for Symfony Lock component",
     "keywords": ["symfony","lock"],
     "license": "GPL-3.0-only",
     "authors": [

@@ -5,47 +5,30 @@ namespace Oliezekat\SymfonyLockFileTouch;
 use Symfony\Component\Lock\PersistingStoreInterface;
 use Symfony\Component\Lock\Key;
 use Symfony\Component\Lock\Exception\LockConflictedException;
-use Symfony\Component\Lock\Exception\InvalidArgumentException;
 use Symfony\Component\Lock\Exception\InvalidTtlException;
+use Symfony\Component\Lock\Exception\LockStorageException;
 use Symfony\Component\Lock\Store\ExpiringStoreTrait;
 
 class Store implements PersistingStoreInterface
 {
+    use DirectoryStoreTrait;
+    use LifeTimeStoreTrait;
+    use TokenStoreTrait;
     use ExpiringStoreTrait;
 
-    private ?string $locksDirPath = null;
     private array $locks = [];
-    private ?int $maxLifeTime = null;
 
-    public function __construct(?string $locksDirPath = null, int $maxLifeTime = 300)
+    public function __construct(?string $directoryPath = null, ?int $lifeTime = null)
     {
-        if ($maxLifeTime < 1) {
-            throw new InvalidArgumentException(\sprintf('"%s()" expects a strictly positive maximum lifetime. Got %d.', __METHOD__, $maxLifeTime));
+        if ($directoryPath !== null) {
+            $this->setDirectoryPath($directoryPath);
         }
-        $this->maxLifeTime = $maxLifeTime;
-        if ($locksDirPath !== null) {
-            $this->setLocksDirPath($locksDirPath);
+        if ($lifeTime !== null) {
+            $this->setLifeTime($lifeTime);
         }
     }
 
-    private function getLocksDirPath(): string
-    {
-        if ($this->locksDirPath === null) {
-            $locksDirPath = implode(DIRECTORY_SEPARATOR, array(sys_get_temp_dir(), md5(base64_encode(random_bytes(32))) . '_locks'));
-            $this->setLocksDirPath($locksDirPath);
-        }
-        return $this->locksDirPath;
-    }
-
-    private function setLocksDirPath(string $locksDirPath): void
-    {
-        if (file_exists($locksDirPath) === false) {
-            mkdir($locksDirPath, 0777, true);
-        }
-        $this->locksDirPath = realpath($locksDirPath);
-    }
-
-    private function getKeySlug(Key $key): string
+    private function getSlug(Key $key): string
     {
         if (!$key->hasState(__CLASS__ . '::SLUG')) {
             $slug = (string) $key;
@@ -82,19 +65,19 @@ class Store implements PersistingStoreInterface
         return $key->getState(__CLASS__ . '::SLUG');
     }
 
-    private function getFilename(Key $key): string
+    private function getFileName(Key $key): string
     {
-        return $this->getKeySlug($key) . '.lock';
+        return $this->getSlug($key) . '.lock';
     }
 
-    private function getFilepath(Key $key): string
+    private function getFilePath(Key $key): string
     {
-        return implode(DIRECTORY_SEPARATOR, array($this->getLocksDirPath(), $this->getFilename($key)));
+        return implode(DIRECTORY_SEPARATOR, array($this->getDirectoryPath(), $this->getFileName($key)));
     }
 
     private function getFileModifiedTime(Key $key): ?int
     {
-        $filePath = $this->getFilepath($key);
+        $filePath = $this->getFilePath($key);
         clearstatcache(true, $filePath);
         if (file_exists($filePath) === false) {
             return null;
@@ -106,21 +89,32 @@ class Store implements PersistingStoreInterface
         return $mtime;
     }
 
-    private function getKeyToken(Key $key): string
+    private function touchFile(Key $key): bool
     {
-        if (!$key->hasState(__CLASS__ . '::TOKEN')) {
-            $token = base64_encode(random_bytes(32));
-            $key->setState(__CLASS__ . '::TOKEN', $token);
+        $filePath = $this->getFilePath($key);
+        $result = @touch($filePath);
+        if ($result === false) {
+            throw new LockStorageException(\sprintf('"%s()" failed to touch the lock file "%s".', __METHOD__, basename($filePath)));
         }
-        return $key->getState(__CLASS__ . '::TOKEN');
+        return $result;
+    }
+
+    private function deleteFile(Key $key): bool
+    {
+        $filePath = $this->getFilePath($key);
+        $result = @unlink($filePath);
+        if (($result === false) && (file_exists($filePath) === true)) {
+            throw new LockStorageException(\sprintf('"%s()" failed to delete the lock file "%s".', __METHOD__, basename($filePath)));
+        }
+        return $result;
     }
 
     /* PersistingStoreInterface */
 
     public function save(Key $key): void
     {
-        $slug = $this->getKeySlug($key);
-        $token = $this->getKeyToken($key);
+        $slug = $this->getSlug($key);
+        $token = $this->getToken($key);
         if (isset($this->locks[$slug])) {
             // already acquired
             if ($this->locks[$slug] === $token) {
@@ -129,11 +123,15 @@ class Store implements PersistingStoreInterface
             throw new LockConflictedException();
         }
         $mtime = $this->getFileModifiedTime($key);
-        if (($mtime !== null) && ($mtime + $this->maxLifeTime > time())) {
-            throw new LockConflictedException();
+        if ($mtime !== null) {
+            if (($this->hasLifeTime() === false) || ($mtime + $this->getLifeTime() > time())) {
+                throw new LockConflictedException();
+            }
         }
-        $key->reduceLifetime($this->maxLifeTime);
-        touch($this->getFilepath($key));
+        if ($this->hasLifeTime()) {
+            $key->reduceLifetime($this->getLifeTime());
+        }
+        $this->touchFile($key);
         $this->locks[$slug] = $token;
         $this->checkNotExpired($key);
     }
@@ -145,8 +143,8 @@ class Store implements PersistingStoreInterface
         }
         // Interface defines a float value but Store required an integer.
         $ttl = (int) ceil($ttl);
-        if ($ttl > $this->maxLifeTime) {
-            throw new InvalidTtlException(\sprintf('"%s()" expects a TTL lower or equals to maximum life time of "%s" seconds. Got "%s".', __METHOD__, $this->maxLifeTime, $ttl));
+        if ($this->hasLifeTime() && ($ttl > $this->getLifeTime())) {
+            throw new InvalidTtlException(\sprintf('"%s()" expects a TTL lower or equals to maximum life time of "%s" seconds. Got "%s".', __METHOD__, $this->getLifeTime(), $ttl));
         }
         // We have to call exists to know if we are the owner
         if (!$this->exists($key)) {
@@ -158,38 +156,37 @@ class Store implements PersistingStoreInterface
             throw new LockConflictedException();
         }
         $key->reduceLifetime($ttl);
-        if ($mtime + $this->maxLifeTime <= time() + ceil($key->getRemainingLifetime() ?? 0)) {
-            touch($this->getFilepath($key));
+        if ($this->hasLifeTime() && ($mtime + $this->getLifeTime() <= time() + ceil($key->getRemainingLifetime() ?? 0))) {
+            $this->touchFile($key);
         }
         $this->checkNotExpired($key);
     }
 
     public function delete(Key $key): void
     {
-        $slug = $this->getKeySlug($key);
+        $slug = $this->getSlug($key);
         if (isset($this->locks[$slug]) === false) {
             // not acquired
             return;
         }
         // The lock is maybe not acquired.
-        if (!$key->hasState(__CLASS__ . '::TOKEN')) {
+        if ($this->hasToken($key) === false) {
             return;
         }
-        $token = $this->getKeyToken($key);
+        $token = $this->getToken($key);
         if ($this->locks[$slug] !== $token) {
             // already acquired by another lock
             return;
         }
-        $filePath = $this->getFilepath($key);
-        unlink($filePath);
+        $this->deleteFile($key);
         unset($this->locks[$slug]);
-        $key->removeState(__CLASS__ . '::TOKEN');
+        $this->removeToken($key);
     }
 
     public function exists(Key $key): bool
     {
-        $slug = $this->getKeySlug($key);
-        $token = $this->getKeyToken($key);
+        $slug = $this->getSlug($key);
+        $token = $this->getToken($key);
         return ($this->locks[$slug] ?? null) === $token;
     }
 }

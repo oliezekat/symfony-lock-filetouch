@@ -1,10 +1,16 @@
 # Symfony Lock FileTouch
 
-A storage implementation for the [Symfony Lock](https://github.com/symfony/lock) component, based on the *PersistingStoreInterface* which **uses touch(), file_exists(), or filemtime() on empty files within a dedicated directory**.
+A storage implementation for [Symfony Lock](https://github.com/symfony/lock) component, based on the *PersistingStoreInterface* which **uses touch(), file_exists(), or filemtime() on empty files within a dedicated directory**.
 
 It supports locking, blocking mode, and auto-release across different applications, provided they use the same directory and the same maximum lifetime.
 
 Lock refresh() requires a TTL that is less than or equal to the maximum lifetime.
+
+## Installation
+
+```bash
+composer require oliezekat/symfony-lock-filetouch
+```
 
 ## Usage
 
@@ -12,7 +18,9 @@ Lock refresh() requires a TTL that is less than or equal to the maximum lifetime
 use Oliezekat\SymfonyLockFileTouch\Store;
 use Symfony\Component\Lock\Factory;
 
-$store = new Store(/* $locksDirPath, $maxLifeTime */);
+$store = new Store(/* $directoryPath, $lifeTime */);
+$store->setDirectoryPath(sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'test');
+$store->setLifeTime(300);
 $factory = new Factory($store);
 
 $lock = $factory->createLock('test');
