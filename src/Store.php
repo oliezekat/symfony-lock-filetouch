@@ -133,16 +133,13 @@ class Store implements PersistingStoreInterface
         }
         $this->touchFile($key);
         $this->locks[$slug] = $token;
+        $key->markUnserializable();
         $this->checkNotExpired($key);
     }
 
     public function putOffExpiration(Key $key, float $ttl): void
     {
-        if ($ttl < 1) {
-            throw new InvalidTtlException(\sprintf('"%s()" expects a TTL greater or equals to 1 second. Got "%s".', __METHOD__, $ttl));
-        }
         // Interface defines a float value but Store required an integer.
-        $ttl = (int) ceil($ttl);
         if ($this->hasLifeTime() && ($ttl > $this->getLifeTime())) {
             throw new InvalidTtlException(\sprintf('"%s()" expects a TTL lower or equals to maximum life time of "%s" seconds. Got "%s".', __METHOD__, $this->getLifeTime(), $ttl));
         }
@@ -156,10 +153,10 @@ class Store implements PersistingStoreInterface
             throw new LockConflictedException();
         }
         $key->reduceLifetime($ttl);
-        if ($this->hasLifeTime() && ($mtime + $this->getLifeTime() <= time() + ceil($key->getRemainingLifetime() ?? 0))) {
+        $this->checkNotExpired($key);
+        if ($this->hasLifeTime() && ($mtime + $this->getLifeTime() <= time() + ($key->getRemainingLifetime() ?? 0))) {
             $this->touchFile($key);
         }
-        $this->checkNotExpired($key);
     }
 
     public function delete(Key $key): void
@@ -186,7 +183,17 @@ class Store implements PersistingStoreInterface
     public function exists(Key $key): bool
     {
         $slug = $this->getSlug($key);
+        if (isset($this->locks[$slug]) === false) {
+            return false;
+        }
         $token = $this->getToken($key);
-        return ($this->locks[$slug] ?? null) === $token;
+        if ($this->locks[$slug] !== $token) {
+            return false;
+        }
+        if ($key->isExpired()) {
+            // if it has expired
+            return false;
+        }
+        return true;
     }
 }
