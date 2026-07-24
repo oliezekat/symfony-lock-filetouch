@@ -16,11 +16,17 @@
         "symfony/lock": "^6.4"
     },
     "require-dev": {
-		"squizlabs/php_codesniffer": "^4.0"
+        "squizlabs/php_codesniffer": "^4.0",
+        "phpunit/phpunit": "^9.6"
 	},
     "autoload": {
         "psr-4": {
             "Oliezekat\\SymfonyLockFileTouch\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Oliezekat\\SymfonyLockFileTouch\\Tests\\": "tests/"
         }
     }
 }

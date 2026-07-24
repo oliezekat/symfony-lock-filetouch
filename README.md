@@ -35,4 +35,5 @@ $lock->release();
 ## Resources
 
  * [Symfony Lock documentation](https://symfony.com/doc/current/components/lock.html)
+ * [Symfony Lock 6.4 code](https://github.com/symfony/lock/tree/6.4)
 
