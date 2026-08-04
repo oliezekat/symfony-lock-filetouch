@@ -17,7 +17,7 @@
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "^4.0",
-        "phpunit/phpunit": "^9.6"
+        "phpunit/phpunit": "^9.6 || ^11.5"
 	},
     "autoload": {
         "psr-4": {
@@ -28,5 +28,8 @@
         "psr-4": {
             "Oliezekat\\SymfonyLockFileTouch\\Tests\\": "tests/"
         }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
     }
 }

@@ -11,4 +11,9 @@
             <directory>./tests/</directory>
         </testsuite>
     </testsuites>
+
+    <logging>
+        <log type="junit" target="var/outputs/phpunit/logfile.xml"/>
+        <log type="testdox-text" target="var/outputs/phpunit/testdox.txt"/>
+    </logging>
 </phpunit>
