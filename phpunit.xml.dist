@@ -4,7 +4,7 @@
     xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
     bootstrap="vendor/autoload.php"
     colors="true"
-    verbose="true"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
 >
     <testsuites>
         <testsuite name="SymfonyLockFileTouch Test Suite">
@@ -13,7 +13,7 @@
     </testsuites>
 
     <logging>
-        <log type="junit" target="var/outputs/phpunit/logfile.xml"/>
-        <log type="testdox-text" target="var/outputs/phpunit/testdox.txt"/>
+        <junit outputFile="var/outputs/phpunit/logfile.xml"/>
+        <testdoxText outputFile="var/outputs/phpunit/testdox.txt"/>
     </logging>
 </phpunit>

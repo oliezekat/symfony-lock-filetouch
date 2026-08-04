@@ -36,5 +36,6 @@ $lock->release();
 
  * [Symfony Lock FileTouch project on *GitHub*](https://github.com/oliezekat/symfony-lock-filetouch)
  * [Symfony Lock documentation](https://symfony.com/doc/current/components/lock.html)
- * [Symfony Lock 6.4 code](https://github.com/symfony/lock/tree/6.4)
+ * [Symfony Lock 6.4 code](https://github.com/symfony/lock/tree/6.4) for PHP 8.1
+ * [Symfony Lock 7.4 code](https://github.com/symfony/lock/tree/7.4) for PHP 8.2
 

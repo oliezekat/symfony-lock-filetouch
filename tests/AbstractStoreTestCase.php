@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-/*
+/**
  * Copy of
- * Symfony\Component\Lock\Tests\Store\AbstractStoreTestCase
- * Tests/Store/AbstractStoreTestCase.php
+ * Symfony\Component\Lock\Test\AbstractStoreTestCase
+ * Test/AbstractStoreTestCase.php
  */
 
 namespace Oliezekat\SymfonyLockFileTouch\Tests;
@@ -19,7 +19,7 @@ abstract class AbstractStoreTestCase extends TestCase
 {
     abstract protected function getStore(): PersistingStoreInterface;
 
-    public function testSave()
+    public function testSave(): void
     {
         $store = $this->getStore();
 
@@ -32,7 +32,7 @@ abstract class AbstractStoreTestCase extends TestCase
         $this->assertFalse($store->exists($key));
     }
 
-    public function testSaveWithDifferentResources()
+    public function testSaveWithDifferentResources(): void
     {
         $store = $this->getStore();
 
@@ -56,7 +56,7 @@ abstract class AbstractStoreTestCase extends TestCase
         $this->assertFalse($store->exists($key2));
     }
 
-    public function testSaveWithDifferentKeysOnSameResources()
+    public function testSaveWithDifferentKeysOnSameResources(): void
     {
         $store = $this->getStore();
 
@@ -90,7 +90,7 @@ abstract class AbstractStoreTestCase extends TestCase
         $this->assertFalse($store->exists($key2));
     }
 
-    public function testSaveTwice()
+    public function testSaveTwice(): void
     {
         $store = $this->getStore();
 
@@ -104,7 +104,7 @@ abstract class AbstractStoreTestCase extends TestCase
         $store->delete($key);
     }
 
-    public function testDeleteIsolated()
+    public function testDeleteIsolated(): void
     {
         $store = $this->getStore();
 
