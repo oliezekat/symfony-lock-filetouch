@@ -36,7 +36,7 @@ trait ExpiringStoreTestTrait
      */
     public function testExpiration(): void
     {
-        $key = new Key(static::class . __METHOD__);
+        $key = new Key(static::class . '::' . __FUNCTION__);
         $clockDelay = $this->getClockDelay();
 
         /** @var PersistingStoreInterface $store */
@@ -52,11 +52,12 @@ trait ExpiringStoreTestTrait
 
     /**
      * Tests the store thrown exception when TTL expires.
+     * @depends testExpiration
      */
     public function testAbortAfterExpiration(): void
     {
         $this->expectException(LockExpiredException::class);
-        $key = new Key(static::class . __METHOD__);
+        $key = new Key(static::class . '::' . __FUNCTION__);
 
         /** @var PersistingStoreInterface $store */
         $store = $this->getStore();
@@ -69,13 +70,14 @@ trait ExpiringStoreTestTrait
      * Tests the refresh can push the limits to the expiration.
      *
      * This test is time-sensitive: the $clockDelay could be adjusted.
+     * @depends testExpiration
      */
     public function testRefreshLock(): void
     {
         // Amount of microseconds we should wait without slowing things down too much
         $clockDelay = $this->getClockDelay();
 
-        $key = new Key(static::class . __METHOD__);
+        $key = new Key(static::class . '::' . __FUNCTION__);
 
         /** @var PersistingStoreInterface $store */
         $store = $this->getStore();
@@ -88,9 +90,12 @@ trait ExpiringStoreTestTrait
         $this->assertFalse($store->exists($key));
     }
 
+    /**
+     * @depends testExpiration
+     */
     public function testSetExpiration(): void
     {
-        $key = new Key(static::class . __METHOD__);
+        $key = new Key(static::class . '::' . __FUNCTION__);
 
         /** @var PersistingStoreInterface $store */
         $store = $this->getStore();
@@ -103,8 +108,8 @@ trait ExpiringStoreTestTrait
 
     public function testExpiredLockCleaned(): void
     {
-        $key1 = new Key(static::class . __METHOD__);
-        $key2 = new Key(static::class . __METHOD__);
+        $key1 = new Key(static::class . '::' . __FUNCTION__);
+        $key2 = new Key(static::class . '::' . __FUNCTION__);
 
         /** @var PersistingStoreInterface $store */
         $store = $this->getStore();

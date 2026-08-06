@@ -15,7 +15,7 @@ trait TempDirectoryTrait
         }
         $path = null;
         while (($path === null) || is_dir($path) || file_exists($path)) {
-            $path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'phpunit_' . md5(__CLASS__ . '::' . date('U') . rand(1000, 9999), false);
+            $path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'phpunit_' . md5(static::class . '::' . date('U') . rand(1000, 9999), false);
         }
         if (mkdir($path, 0777, true)) {
             self::$testTempDirectoryPath = $path;

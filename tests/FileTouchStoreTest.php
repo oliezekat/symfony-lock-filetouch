@@ -27,7 +27,7 @@ final class FileTouchStoreTest extends AbstractStoreTestCase
      */
     public static function tearDownAfterClass(): void
     {
-        self::deleteTempDirectory();
+        //self::deleteTempDirectory();
     }
 
     private function getTestTempDirectoryPath(): ?string
