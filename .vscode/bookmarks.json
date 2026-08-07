@@ -29,6 +29,41 @@
 					"label": "todo interface for lifetimed stores"
 				}
 			]
+		},
+		{
+			"path": "tests/AbstractFileBasedStoreTestCase.php",
+			"bookmarks": [
+				{
+					"line": 17,
+					"column": 0,
+					"label": "todo with interface"
+				},
+				{
+					"line": 37,
+					"column": 0,
+					"label": "todo trait or abstract method"
+				}
+			]
+		},
+		{
+			"path": "tests/LifeTimedStoreTestTrait.php",
+			"bookmarks": [
+				{
+					"line": 26,
+					"column": 0,
+					"label": "todo with interface"
+				}
+			]
+		},
+		{
+			"path": "tests/FileBasedStoreTestTrait.php",
+			"bookmarks": [
+				{
+					"line": 21,
+					"column": 0,
+					"label": "todo with interface"
+				}
+			]
 		}
 	]
 }

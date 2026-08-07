@@ -29,17 +29,6 @@ trait TempDirectoryTrait
         return self::$testTempDirectoryPath;
     }
 
-    private function assertTempDirectoryDefined(): void
-    {
-        $this->assertTrue($this->createTempDirectory(), 'Path not null');
-    }
-
-    private function assertTempDirectoryDeleted(): void
-    {
-        self::deleteTempDirectory();
-        $this->assertTrue($this->getTempDirectoryPath() === null, 'Path is null');
-    }
-
     private static function deleteTempDirectory(): void
     {
         if (self::$testTempDirectoryPath === null) {

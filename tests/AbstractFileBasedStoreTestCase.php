@@ -5,14 +5,19 @@ declare(strict_types=1);
 namespace Oliezekat\SymfonyLockFileTouch\Tests;
 
 use Symfony\Component\Lock\PersistingStoreInterface;
-use Oliezekat\SymfonyLockFileTouch\Store as FileTouchStore;
 
-final class FileTouchStoreTest extends AbstractStoreTestCase
+abstract class AbstractFileBasedStoreTestCase extends AbstractStoreTestCase
 {
     use TempDirectoryTrait;
+    use FileBasedStoreTestTrait;
     use ExpiringStoreTestTrait;
 
-    /* TempDirectory */
+    /**
+     * @see AbstractStoreTestCase::createStoreInstance()
+     */
+    abstract protected function createStoreInstance(): PersistingStoreInterface;
+
+    /* TempDirectoryTrait */
 
     /**
      * This method is called before the first test of this test class is run.
@@ -27,27 +32,11 @@ final class FileTouchStoreTest extends AbstractStoreTestCase
      */
     public static function tearDownAfterClass(): void
     {
-        //self::deleteTempDirectory();
+        self::deleteTempDirectory();
     }
 
-    private function getTestTempDirectoryPath(): ?string
+    protected function getTestTempDirectoryPath(): ?string
     {
         return $this->getTempDirectoryPath() . DIRECTORY_SEPARATOR . 'locks';
-    }
-
-    /* ExpiringStoreTestTrait */
-
-    protected function getClockDelay(): int
-    {
-        return 250000;
-    }
-
-    /* AbstractStoreTestCase */
-
-    protected function getStore(): PersistingStoreInterface
-    {
-        $store = new FileTouchStore();
-        $store->setDirectoryPath($this->getTestTempDirectoryPath());
-        return $store;
     }
 }

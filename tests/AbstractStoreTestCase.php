@@ -1,23 +1,33 @@
 <?php
 
-declare(strict_types=1);
-
 /**
- * Copy of
+ * Copy fixed of
  * Symfony\Component\Lock\Test\AbstractStoreTestCase
  * Test/AbstractStoreTestCase.php
  */
 
+declare(strict_types=1);
+
 namespace Oliezekat\SymfonyLockFileTouch\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Lock\Exception\LockConflictedException;
 use Symfony\Component\Lock\Key;
 use Symfony\Component\Lock\PersistingStoreInterface;
+use Symfony\Component\Lock\Exception\LockConflictedException;
 
 abstract class AbstractStoreTestCase extends TestCase
 {
-    abstract protected function getStore(): PersistingStoreInterface;
+    private ?PersistingStoreInterface $store = null;
+
+    abstract protected function createStoreInstance(): PersistingStoreInterface;
+
+    final protected function getStore(): PersistingStoreInterface
+    {
+        if ($this->store === null) {
+            $this->store = $this->createStoreInstance();
+        }
+        return $this->store;
+    }
 
     public function testSave(): void
     {

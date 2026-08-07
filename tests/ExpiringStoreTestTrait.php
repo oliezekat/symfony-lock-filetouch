@@ -1,19 +1,18 @@
 <?php
 
-declare(strict_types=1);
-
 /**
- * Copy of
+ * Copy fixed of
  * Symfony\Component\Lock\Tests\Store\ExpiringStoreTestTrait
  * Tests/Store/ExpiringStoreTestTrait.php
  */
 
+declare(strict_types=1);
+
 namespace Oliezekat\SymfonyLockFileTouch\Tests;
 
-use Symfony\Component\Lock\Exception\LockExpiredException;
 use Symfony\Component\Lock\Key;
 use Symfony\Component\Lock\PersistingStoreInterface;
-use Oliezekat\SymfonyLockFileTouch\Tests\AbstractStoreTestCase;
+use Symfony\Component\Lock\Exception\LockExpiredException;
 
 trait ExpiringStoreTestTrait
 {
@@ -33,13 +32,13 @@ trait ExpiringStoreTestTrait
      * Tests the store automatically delete the key when it expire.
      *
      * This test is time-sensitive: the $clockDelay could be adjusted.
+     * @depends testSave
      */
     public function testExpiration(): void
     {
         $key = new Key(static::class . '::' . __FUNCTION__);
         $clockDelay = $this->getClockDelay();
 
-        /** @var PersistingStoreInterface $store */
         $store = $this->getStore();
 
         $store->save($key);
@@ -59,7 +58,6 @@ trait ExpiringStoreTestTrait
         $this->expectException(LockExpiredException::class);
         $key = new Key(static::class . '::' . __FUNCTION__);
 
-        /** @var PersistingStoreInterface $store */
         $store = $this->getStore();
 
         $store->save($key);
@@ -74,12 +72,10 @@ trait ExpiringStoreTestTrait
      */
     public function testRefreshLock(): void
     {
-        // Amount of microseconds we should wait without slowing things down too much
         $clockDelay = $this->getClockDelay();
 
         $key = new Key(static::class . '::' . __FUNCTION__);
 
-        /** @var PersistingStoreInterface $store */
         $store = $this->getStore();
 
         $store->save($key);
@@ -97,7 +93,6 @@ trait ExpiringStoreTestTrait
     {
         $key = new Key(static::class . '::' . __FUNCTION__);
 
-        /** @var PersistingStoreInterface $store */
         $store = $this->getStore();
 
         $store->save($key);
@@ -106,12 +101,14 @@ trait ExpiringStoreTestTrait
         $this->assertLessThanOrEqual(1, $key->getRemainingLifetime());
     }
 
+    /**
+     * @depends testSave
+     */
     public function testExpiredLockCleaned(): void
     {
         $key1 = new Key(static::class . '::' . __FUNCTION__);
         $key2 = new Key(static::class . '::' . __FUNCTION__);
 
-        /** @var PersistingStoreInterface $store */
         $store = $this->getStore();
         $key1->reduceLifetime(0);
 
