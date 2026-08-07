@@ -6,9 +6,9 @@ use Symfony\Component\Lock\Key;
 
 trait TokenStoreTrait
 {
-    private function getTokenStateKey(Key $key): string
+    private function getTokenStateKey(): string
     {
-        return __CLASS__ . '::TOKEN';
+        return static::class . '::TOKEN';
     }
 
     private function generateUniqueToken(): string
@@ -18,7 +18,7 @@ trait TokenStoreTrait
 
     private function getToken(Key $key): string
     {
-        $stateKey = $this->getTokenStateKey($key);
+        $stateKey = $this->getTokenStateKey();
         if (!$key->hasState($stateKey)) {
             $token = $this->generateUniqueToken();
             $key->setState($stateKey, $token);
@@ -28,11 +28,11 @@ trait TokenStoreTrait
 
     private function hasToken(Key $key): bool
     {
-        return $key->hasState($this->getTokenStateKey($key));
+        return $key->hasState($this->getTokenStateKey());
     }
 
     private function removeToken(Key $key): void
     {
-        $key->removeState($this->getTokenStateKey($key));
+        $key->removeState($this->getTokenStateKey());
     }
 }

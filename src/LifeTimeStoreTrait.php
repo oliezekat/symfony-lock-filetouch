@@ -7,15 +7,16 @@ use Symfony\Component\Lock\Exception\LockStorageException;
 
 trait LifeTimeStoreTrait
 {
-    private ?int $lifeTime = null;
+    private ?float $lifeTime = null;
+    private static float $DISABLED_LIFETIME = -1;
 
-    public function setLifeTime(int $lifeTime): self
+    public function setLifeTime(float $lifeTime): self
     {
         if ($this->lifeTime !== null) {
             return $this;
         }
-        if ($lifeTime < 1) {
-            throw new InvalidArgumentException(\sprintf('"%s()" expects a strictly positive lifetime. Got %d.', __METHOD__, $lifeTime));
+        if ($lifeTime <= 0) {
+            throw new InvalidArgumentException(\sprintf('"%s()" expects a strictly positive life time. Got "%02.1F".', __METHOD__, $lifeTime));
         }
         $this->lifeTime = $lifeTime;
         return $this;
@@ -26,25 +27,25 @@ trait LifeTimeStoreTrait
         if ($this->lifeTime !== null) {
             return $this;
         }
-        $this->lifeTime = -1;
+        $this->lifeTime = self::$DISABLED_LIFETIME;
         return $this;
     }
 
     private function hasLifeTime(): bool
     {
         if ($this->lifeTime === null) {
-            $this->lifeTime = -1;
+            $this->lifeTime = self::$DISABLED_LIFETIME;
         }
-        return (($this->lifeTime !== null) && ($this->lifeTime >= 1));
+        return (($this->lifeTime !== null) && ($this->lifeTime > 0));
     }
 
-    private function getLifeTime(): int
+    private function getLifeTime(): float
     {
         if ($this->lifeTime === null) {
-            $this->lifeTime = -1;
+            $this->lifeTime = self::$DISABLED_LIFETIME;
         }
-        if ($this->lifeTime < 1) {
-            throw new LockStorageException(\sprintf('"%s()" disabled lifetime.', __METHOD__));
+        if ($this->lifeTime <= 0) {
+            throw new LockStorageException(\sprintf('"%s()" disabled life time.', __METHOD__));
         }
         return $this->lifeTime;
     }

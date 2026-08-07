@@ -2,23 +2,26 @@
 
 namespace Oliezekat\SymfonyLockFileTouch;
 
-use Symfony\Component\Lock\PersistingStoreInterface;
 use Symfony\Component\Lock\Key;
+use Symfony\Component\Lock\PersistingStoreInterface;
+use Symfony\Component\Lock\Store\ExpiringStoreTrait;
 use Symfony\Component\Lock\Exception\LockConflictedException;
 use Symfony\Component\Lock\Exception\InvalidTtlException;
 use Symfony\Component\Lock\Exception\LockStorageException;
-use Symfony\Component\Lock\Store\ExpiringStoreTrait;
 
 class Store implements PersistingStoreInterface
 {
     use DirectoryStoreTrait;
     use LifeTimeStoreTrait;
+    use SlugStoreTrait;
     use TokenStoreTrait;
     use ExpiringStoreTrait;
 
     private array $locks = [];
+    private ?string $fileExtension = null;
+    protected int $maxFileNameLength = 256;
 
-    public function __construct(?string $directoryPath = null, ?int $lifeTime = null)
+    public function __construct(?string $directoryPath = null, ?float $lifeTime = null)
     {
         if ($directoryPath !== null) {
             $this->setDirectoryPath($directoryPath);
@@ -28,46 +31,59 @@ class Store implements PersistingStoreInterface
         }
     }
 
-    private function getSlug(Key $key): string
+    protected function defineDefaultDirectoryPath(): string
     {
-        if (!$key->hasState(__CLASS__ . '::SLUG')) {
-            $slug = (string) $key;
-            $slug = str_replace(
-                array(
-                    '://',
-                    ":\\",
-                    DIRECTORY_SEPARATOR,
-                    '/',
-                    "\\",
-                    "'",
-                    ':',
-                    '*',
-                    '?',
-                    '"',
-                    '<',
-                    '>',
-                    '|',
-                    '.',
-                    '&',
-                    '=',
-                    '_',
-                    '  ',
-                    ),
-                ' ',
-                $slug
-            );
-            $slug = trim($slug);
-            $slug = strtolower($slug);
-            $slug = str_replace(' ', '-', $slug);
-            // todo check valid filename & filepath length
-            $key->setState(__CLASS__ . '::SLUG', $slug);
+        return implode(DIRECTORY_SEPARATOR, array(sys_get_temp_dir(), str_replace('\\', '-', static::class)));
+    }
+
+    protected function defineDefaultFileExtension(): string
+    {
+        return 'lock';
+    }
+
+    public function setFileExtension(string $extension = ''): self
+    {
+        if ($this->fileExtension !== null) {
+            return $this;
         }
-        return $key->getState(__CLASS__ . '::SLUG');
+        $extension = str_replace(['.', '*', ' '], '', $extension);
+        $extension = trim($extension);
+        $this->fileExtension = $extension;
+        return $this;
+    }
+
+    private function getFileExtension(): string
+    {
+        if ($this->fileExtension === null) {
+            $this->fileExtension = $this->defineDefaultFileExtension();
+        }
+        return $this->fileExtension;
+    }
+
+    private function getFileNameStateKey(): string
+    {
+        return static::class . '::FILENAME';
+    }
+
+    private function generateFileName(Key $key): string
+    {
+        $slug = $this->generateSlugAlphaNumDashed($key);
+        $extension = (empty($this->getFileExtension()) ? '' : '.' . $this->getFileExtension());
+        $fileName = $slug . $extension;
+        return $fileName;
     }
 
     private function getFileName(Key $key): string
     {
-        return $this->getSlug($key) . '.lock';
+        $stateKey = $this->getFileNameStateKey();
+        if (!$key->hasState($stateKey)) {
+            $fileName = $this->generateFileName($key);
+            if (strlen($fileName) > $this->maxFileNameLength) {
+                throw new LockStorageException(\sprintf('"%s()" Lock key is too long.', __METHOD__));
+            }
+            $key->setState($stateKey, $fileName);
+        }
+        return $key->getState($stateKey);
     }
 
     private function getFilePath(Key $key): string
@@ -113,18 +129,18 @@ class Store implements PersistingStoreInterface
 
     public function save(Key $key): void
     {
-        $slug = $this->getSlug($key);
+        $fileName = $this->getFileName($key);
         $token = $this->getToken($key);
-        if (isset($this->locks[$slug])) {
+        if (isset($this->locks[$fileName])) {
             // already acquired
-            if ($this->locks[$slug] === $token) {
+            if ($this->locks[$fileName] === $token) {
                 return;
             }
             throw new LockConflictedException();
         }
         $mtime = $this->getFileModifiedTime($key);
         if ($mtime !== null) {
-            if (($this->hasLifeTime() === false) || ($mtime + $this->getLifeTime() > time())) {
+            if (($this->hasLifeTime() === false) || ($mtime + $this->getLifeTime() > microtime(true))) {
                 throw new LockConflictedException();
             }
         }
@@ -132,16 +148,15 @@ class Store implements PersistingStoreInterface
             $key->reduceLifetime($this->getLifeTime());
         }
         $this->touchFile($key);
-        $this->locks[$slug] = $token;
+        $this->locks[$fileName] = $token;
         $key->markUnserializable();
         $this->checkNotExpired($key);
     }
 
     public function putOffExpiration(Key $key, float $ttl): void
     {
-        // Interface defines a float value but Store required an integer.
         if ($this->hasLifeTime() && ($ttl > $this->getLifeTime())) {
-            throw new InvalidTtlException(\sprintf('"%s()" expects a TTL lower or equals to maximum life time of "%s" seconds. Got "%s".', __METHOD__, $this->getLifeTime(), $ttl));
+            throw new InvalidTtlException(\sprintf('"%s()" expects a TTL lower or equals to life time of "%02.1F" seconds. Got "%02.1F".', __METHOD__, $this->getLifeTime(), $ttl));
         }
         // We have to call exists to know if we are the owner
         if (!$this->exists($key)) {
@@ -154,15 +169,15 @@ class Store implements PersistingStoreInterface
         }
         $key->reduceLifetime($ttl);
         $this->checkNotExpired($key);
-        if ($this->hasLifeTime() && ($mtime + $this->getLifeTime() <= time() + ($key->getRemainingLifetime() ?? 0))) {
+        if ($this->hasLifeTime() && ($mtime + $this->getLifeTime() <= microtime(true) + ($key->getRemainingLifetime() ?? 0))) {
             $this->touchFile($key);
         }
     }
 
     public function delete(Key $key): void
     {
-        $slug = $this->getSlug($key);
-        if (isset($this->locks[$slug]) === false) {
+        $fileName = $this->getFileName($key);
+        if (isset($this->locks[$fileName]) === false) {
             // not acquired
             return;
         }
@@ -171,23 +186,23 @@ class Store implements PersistingStoreInterface
             return;
         }
         $token = $this->getToken($key);
-        if ($this->locks[$slug] !== $token) {
+        if ($this->locks[$fileName] !== $token) {
             // already acquired by another lock
             return;
         }
         $this->deleteFile($key);
-        unset($this->locks[$slug]);
+        unset($this->locks[$fileName]);
         $this->removeToken($key);
     }
 
     public function exists(Key $key): bool
     {
-        $slug = $this->getSlug($key);
-        if (isset($this->locks[$slug]) === false) {
+        $fileName = $this->getFileName($key);
+        if (isset($this->locks[$fileName]) === false) {
             return false;
         }
         $token = $this->getToken($key);
-        if ($this->locks[$slug] !== $token) {
+        if ($this->locks[$fileName] !== $token) {
             return false;
         }
         if ($key->isExpired()) {

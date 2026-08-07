@@ -8,11 +8,13 @@ trait DirectoryStoreTrait
 {
     private ?string $directoryPath = null;
 
+    abstract protected function defineDefaultDirectoryPath(): string;
+
     private function getDirectoryPath(): string
     {
         if ($this->directoryPath === null) {
             // Set temporary directory
-            $directoryPath = implode(DIRECTORY_SEPARATOR, array(sys_get_temp_dir(), str_replace('\\', '-', __CLASS__)));
+            $directoryPath = $this->defineDefaultDirectoryPath();
             $this->setDirectoryPath($directoryPath);
         }
         return $this->directoryPath;
